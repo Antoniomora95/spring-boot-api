@@ -1,27 +1,41 @@
 #!/bin/zsh
-# https://www.tutorialworks.com/container-networking/
-# always check the existent containers, all of them --> docker container ls -all
-docker pull mysql:latest
 
-docker run -p 3306:3306 --name mysql-container  -e MYSQL_ROOT_PASSWORD=root-pwd -e MYSQL_USER=antonio -e MYSQL_PASSWORD=w3lcome -d mysql:latest
-echo 'Starting container'
+# Check if Docker daemon is running
+if ! docker info &>/dev/null; then
+    echo "Docker daemon is not running"
+    exit 1
+fi
 
+# Pull a specific version of MySQL image
+docker pull mysql:8.0
 
-docker exec -i mysql-container bash <<EOF
-  mysql -uroot -proot-pwd
-  CREATE DATABASE IF NOT EXISTS spring_api_db;
-  grant all on spring_api_db.* to 'antonio'@'%';
-  USE spring_api_db;
-  CREATE TABLE IF NOT EXISTS USERS_API ( id INT(11) NOT NULL,
-                                       	name VARCHAR(100) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL,
-                                       	email VARCHAR(60) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL,
-                                       	PRIMARY KEY (id)
-                                       );
-  DESCRIBE USERS_API;
-  SHOW TABLES;
-  SHOW DATABASES;
+# Check if container already exists
+if docker container ls -a | grep -q mysql-container; then
+    echo "mysql-container already exists"
+else
+    # Run container interactively and delete it when stopped
+    docker run -it --rm -p 3306:3306 --name mysql-container \
+    -e MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD \
+    -e MYSQL_USER=$MYSQL_USER \
+    -e MYSQL_PASSWORD=$MYSQL_PASSWORD \
+    mysql:8.0
+fi
+
+# Connect to container and create database and table
+docker exec -i mysql-container mysql -uroot -p$MYSQL_ROOT_PASSWORD <<EOF
+    CREATE DATABASE IF NOT EXISTS spring_api_db;
+    GRANT ALL ON spring_api_db.* TO '$MYSQL_USER'@'%';
+    USE spring_api_db;
+    CREATE TABLE IF NOT EXISTS USERS_API (
+        id INT(11) NOT NULL,
+        name VARCHAR(100) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL,
+        email VARCHAR(60) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL,
+        PRIMARY KEY (id)
+    );
+    SHOW TABLES;
 EOF
-echo 'mysql-container is up and running'
+
+# Output container logs
 docker container logs mysql-container
 
 

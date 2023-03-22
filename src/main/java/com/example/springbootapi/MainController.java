@@ -1,8 +1,10 @@
 package com.example.springbootapi;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 
 @Controller //this means this clas is a controller
@@ -18,13 +20,50 @@ public class MainController {
        User localUser = new User();
        localUser.setEmail(user.getEmail());
        localUser.setName(user.getName());
-       userRepository.save(localUser);
-       return "saved";
+        try {
+            userRepository.save(localUser);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return "saved";
     }
 
     @GetMapping
     public @ResponseBody Iterable<User> getAllUsers() {
         // this returns a JSON or XML with the users
         return userRepository.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public @ResponseBody User getUserById(@PathVariable Integer id) {
+        return userRepository.findById(id).
+                orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    @PutMapping("/{id}")
+    public @ResponseBody String updateUserById(@PathVariable Integer id, @RequestBody User user) {
+        User localUser = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        localUser.setEmail(user.getEmail());
+        localUser.setName(user.getName());
+        try {
+            userRepository.save(localUser);
+            throw new RuntimeException("error here");
+            //return "updated";
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public @ResponseBody String deleteUserById(@PathVariable Integer id) {
+        User localUser = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        try {
+            userRepository.delete(localUser);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return "deleted";
     }
 }
